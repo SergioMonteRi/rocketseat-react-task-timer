@@ -35,16 +35,35 @@ export function CycleContextProvider({
 }: {
   children: React.ReactNode
 }) {
-  const [cyclesState, dispatch] = useReducer(cyclesReducer, {
-    cycles: [],
-    activeCycleId: null,
-  })
+  const [cyclesState, dispatch] = useReducer(
+    cyclesReducer,
+    {
+      cycles: [],
+      activeCycleId: null,
+    },
+    (initialState) => {
+      const storedStateAsJSON = localStorage.getItem(
+        '@task-timer:cycles-state-1.0.0',
+      )
 
-  const [amountSecondsElapsed, setAmountSecondsElapsed] = useState(0)
+      if (storedStateAsJSON) {
+        return JSON.parse(storedStateAsJSON)
+      }
+
+      return initialState
+    },
+  )
 
   const { cycles, activeCycleId } = cyclesState
 
   const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId)
+
+  const [amountSecondsElapsed, setAmountSecondsElapsed] = useState(() => {
+    if (activeCycle)
+      return differenceInSeconds(new Date(), new Date(activeCycle.startDate))
+
+    return 0
+  })
 
   const totalSeconds = activeCycle ? activeCycle?.minutesAmount * 60 : 0
 
@@ -80,7 +99,7 @@ export function CycleContextProvider({
       interval = setInterval(() => {
         const secondsDifference = differenceInSeconds(
           new Date(),
-          activeCycle.startDate,
+          new Date(activeCycle.startDate),
         )
 
         if (secondsDifference >= totalSeconds) {
@@ -104,6 +123,12 @@ export function CycleContextProvider({
       document.title = `${minutes}:${seconds}`
     }
   }, [activeCycle, minutes, seconds])
+
+  useEffect(() => {
+    const stateJSON = JSON.stringify(cyclesState)
+
+    localStorage.setItem('@task-timer:cycles-state-1.0.0', stateJSON)
+  }, [cyclesState])
 
   return (
     <CyclesContex.Provider
